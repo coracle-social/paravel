@@ -1,11 +1,12 @@
 import {Socket} from "./util/Socket"
-import {EventBus} from "./util/EventBus"
+import {EventEmitter} from 'events'
 
-export class Pool {
+export class Pool extends EventEmitter {
   data: Map<string, Socket>
   constructor() {
+    super()
+
     this.data = new Map()
-    this.bus = new EventBus()
   }
   has(url) {
     return this.data.has(url)
@@ -15,12 +16,10 @@ export class Pool {
       const socket = new Socket(url)
 
       this.data.set(url, socket)
-      this.bus.emit('init', {url})
+      this.emit('init', {url})
 
-      socket.bus.addListeners({
-        open: () => this.bus.emit('open', {url}),
-        close: () => this.bus.emit('close', {url}),
-      })
+      socket.on('open', () => this.emit('open', {url}))
+      socket.on('close', () => this.emit('close', {url}))
     }
 
     return this.data.get(url)
@@ -29,7 +28,7 @@ export class Pool {
     const socket = this.data.get(url)
 
     if (socket) {
-      socket.cleanup()
+      socket.removeAllListeners()
       this.data.delete(url)
     }
   }
